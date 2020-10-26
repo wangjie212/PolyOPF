@@ -690,17 +690,15 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
     n=nbus+ng
     genlabel=Int[]
     if vmc=="quadratic"&&gen_model=="two"
-        # m=3*nbus+4*nb+2*ng+length(ref[:ref_buses])
-        m=3*nbus+2*ng+length(ref[:ref_buses])
+        m=4*nbus+4*nb+2*ng+length(ref[:ref_buses])
     elseif vmc=="quartic"&&gen_model=="two"
-        m=2*nbus+4*nb+2*ng+length(ref[:ref_buses])
+        m=3*nbus+4*nb+2*ng+length(ref[:ref_buses])
     elseif vmc=="quadratic"&&gen_model=="one"
-        m=3*nbus+4*nb+4*ng+length(ref[:ref_buses])
+        m=4*nbus+4*nb+4*ng+length(ref[:ref_buses])
     else
-        m=2*nbus+4*nb+4*ng+length(ref[:ref_buses])
+        m=3*nbus+4*nb+4*ng+length(ref[:ref_buses])
     end
-    numeq=nbus+length(ref[:ref_buses])
-    # numeq=length(ref[:ref_buses])
+    numeq=2*nbus+length(ref[:ref_buses])
     dg=2*ones(Int, m)
     supp=Vector{Vector{Vector{Vector{UInt16}}}}(undef, m+1)
     coe=Vector{Vector{complex(Float64)}}(undef, m+1)
@@ -715,25 +713,25 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
     supp[1][1]=[UInt16[], UInt16[]]
     for i=1:ng
         gen=ref[:gen][gens[i]]
-        coe[1][5*(i-1)+2:5*(i-1)+4]=[0.25*gen["cost"][2], 0.25*gen["cost"][2], 0.25*gen["cost"][2]]
-        coe[1][5*(i-1)+5:5*(i-1)+6]=[0.5*gen["cost"][1], 0.5*gen["cost"][1]]
-        supp[1][5*(i-1)+2:5*(i-1)+6]=[[UInt16[nbus+i;nbus+i], UInt16[]], [UInt16[nbus+i], UInt16[nbus+i]], [UInt16[], UInt16[nbus+i;nbus+i]], [UInt16[nbus+i], UInt16[]], [UInt16[], UInt16[nbus+i]]]
+        coe[1][5*(i-1)+2:5*(i-1)+3]=[0.5*gen["cost"][2], 0.5*gen["cost"][2]]
+        coe[1][5*(i-1)+4:5*(i-1)+6]=[0.25*gen["cost"][1], 0.5*gen["cost"][1], 0.25*gen["cost"][1]]
+        supp[1][5*(i-1)+2:5*(i-1)+6]=[[UInt16[nbus+i], UInt16[]], [UInt16[], UInt16[nbus+i]], [UInt16[nbus+i;nbus+i], UInt16[]], [UInt16[nbus+i], UInt16[nbus+i]], [UInt16[], UInt16[nbus+i;nbus+i]]]
     end
     supp[1],coe[1]=move_zero!(supp[1],coe[1])
+    k=2
 
     bus=collect(keys(ref[:bus]))
     sort!(bus)
     # voltage magnitude constraints
-    k=2
     if vmc=="quadratic"
         for i=1:nbus
-            supp[k]=[[UInt16[], UInt16[]], [UInt16[], UInt16[i;i]]]
+            supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]]]
             coe[k]=[-ref[:bus][bus[i]]["vmin"]^2;1]
             if normal==true
                 coe[k]=normalize(coe[k])
             end
             k+=1
-            supp[k]=[[UInt16[], UInt16[]], [UInt16[], UInt16[i;i]]]
+            supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]]]
             coe[k]=[ref[:bus][bus[i]]["vmax"]^2;-1]
             if normal==true
                 coe[k]=normalize(coe[k])
@@ -754,64 +752,58 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
         end
     end
 
-    # for (i, branch) in ref[:branch]
-    #     g, b = PowerModels.calc_branch_y(branch)
-    #     tr, ti = PowerModels.calc_branch_t(branch)
-    #     g_fr = branch["g_fr"]
-    #     b_fr = branch["b_fr"]
-    #     g_to = branch["g_to"]
-    #     b_to = branch["b_to"]
-    #     tm = branch["tap"]
-    #     vr = bfind(bus,nbus,branch["f_bus"])
-    #     vt = bfind(bus,nbus,branch["t_bus"])
-    #     srt=sort(UInt16[vr, vt])
-    #     a1=g+g_fr
-    #     b1=(-g*tr+b*ti)/2+(b*tr+g*ti)*im/2
-    #     c1=(-g*tr+b*ti)/2-(b*tr+g*ti)*im/2
-    #     a2=-(b+b_fr)
-    #     b2=(b*tr+g*ti)/2+(g*tr-b*ti)*im/2
-    #     c2=(b*tr+g*ti)/2-(g*tr-b*ti)*im/2
-    #     d1=(g+g_to)*tm^2
-    #     e1=-(g*tr+b*ti)/2+(-b*tr+g*ti)*im/2
-    #     f1=-(g*tr+b*ti)/2+(b*tr-g*ti)*im/2
-    #     d2=-(b+b_to)*tm^2
-    #     e2=(b*tr-g*ti)/2-(g*tr+b*ti)*im/2
-    #     f2=(b*tr-g*ti)/2+(g*tr+b*ti)*im/2
-    #
-    #     # angle differences
-    #     coe[k]=[tan(branch["angmax"])+im;tan(branch["angmax"]-im)]
-    #     if normal==true
-    #         coe[k]=normalize(coe[k])
-    #     end
-    #     supp[k]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
-    #     supp[k],coe[k]=move_zero!(supp[k],coe[k])
-    #     k+=1
-    #     coe[k]=[-tan(branch["angmin"])-im;-tan(branch["angmin"])+im]
-    #     if normal==true
-    #         coe[k]=normalize(coe[k])
-    #     end
-    #     supp[k]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
-    #     supp[k],coe[k]=move_zero!(supp[k],coe[k])
-    #     k+=1
-    #
-    #     # thermal limits
-    #     coe[k]=[branch["rate_a"]^2*tm^4;-(a1^2+a2^2);-(b1^2+b2^2);-(c1^2+c2^2);-2*(a1*b1+a2*b2);-2*(a1*c1+a2*c2);-2*(b1*c1+b2*c2)]
-    #     if normal==true
-    #         coe[k]=normalize(coe[k])
-    #     end
-    #     supp[k]=[[UInt16[], UInt16[]], [UInt16[vr;vr], UInt16[vr;vr]], [UInt16[vr;vr], UInt16[vt;vt]], [UInt16[vt;vt], UInt16[vr;vr]], [UInt16[vr;vr], srt], [srt, UInt16[vr;vr]], [srt, srt]]
-    #     supp[k],coe[k]=move_zero!(supp[k],coe[k])
-    #     dg[k-1]=4
-    #     k+=1
-    #     coe[k]=[branch["rate_a"]^2*tm^4;-(d1^2+d1^2);-(e1^2+e2^2);-(f1^2+f2^2);-2*(d1*e1+d2*e2);-2*(d1*f1+d2*f2);-2*(e1*f1+e2*f2)]
-    #     if normal==true
-    #         coe[k]=normalize(coe[k])
-    #     end
-    #     supp[k]=[[UInt16[], UInt16[]], [UInt16[vt;vt], UInt16[vt;vt]], [UInt16[vr;vr], UInt16[vt;vt]], [UInt16[vt;vt], UInt16[vr;vr]], [srt, UInt16[vt;vt]], [UInt16[vt;vt], srt], [srt, srt]]
-    #     supp[k],coe[k]=move_zero!(supp[k],coe[k])
-    #     dg[k-1]=4
-    #     k+=1
-    # end
+    for (i, branch) in ref[:branch]
+        g, b = PowerModels.calc_branch_y(branch)
+        tr, ti = PowerModels.calc_branch_t(branch)
+        g_fr = branch["g_fr"]
+        b_fr = branch["b_fr"]
+        g_to = branch["g_to"]
+        b_to = branch["b_to"]
+        tm = branch["tap"]
+        vr = bfind(bus,nbus,branch["f_bus"])
+        vt = bfind(bus,nbus,branch["t_bus"])
+        srt=sort(UInt16[vr, vt])
+        a1=g+g_fr
+        b1=-(b+b_fr)
+        c1=-g*tr+b*ti
+        d1=b*tr+g*ti
+        a2=(g+g_to)*tm^2
+        b2=-(b+b_to)*tm^2
+        c2=g*tr+b*ti
+        d2=-b*tr+g*ti
+
+        # angle differences
+        coe[k]=[tan(branch["angmax"])+im;tan(branch["angmax"])-im]
+        if normal==true
+            coe[k]=normalize(coe[k])
+        end
+        supp[k]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
+        k+=1
+        coe[k]=[-tan(branch["angmin"])-im;-tan(branch["angmin"])+im]
+        if normal==true
+            coe[k]=normalize(coe[k])
+        end
+        supp[k]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
+        k+=1
+
+        # thermal limits
+        coe[k]=[branch["rate_a"]^2*tm^4;-(a1^2+b1^2);-(a1*c1+b1*d1)+(b1*c1-a1*d1)*im;-(a1*c1+b1*d1)+(a1*d1-b1*c1)*im;-(c1^2+d1^2)]
+        if normal==true
+            coe[k]=normalize(coe[k])
+        end
+        supp[k]=[[UInt16[], UInt16[]], [UInt16[vr;vr], UInt16[vr;vr]], [UInt16[vr;vr], srt], [srt, UInt16[vr;vr]], [srt, srt]]
+        supp[k],coe[k]=move_zero!(supp[k],coe[k])
+        dg[k-1]=4
+        k+=1
+        coe[k]=[branch["rate_a"]^2*tm^4;-(a2^2+b2^2);a2*c2+b2*d2+(b2*c2-a2*d2)*im;a2*c2+b2*d2+(a2*d2-b2*c2)*im;-(c2^2+d2^2)]
+        if normal==true
+            coe[k]=normalize(coe[k])
+        end
+        supp[k]=[[UInt16[], UInt16[]], [UInt16[vt;vt], UInt16[vt;vt]], [srt, UInt16[vt;vt]], [UInt16[vt;vt], srt], [srt, srt]]
+        supp[k],coe[k]=move_zero!(supp[k],coe[k])
+        dg[k-1]=4
+        k+=1
+    end
 
     # power generation bound
     zero_pgen=UInt16[]
@@ -884,10 +876,16 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
         bus_shunts = [ref[:shunt][s] for s in ref[:bus_shunts][i]]
         coe[k]=zeros(complex(Float64), 2*length(ref[:bus_arcs][i])+2)
         supp[k]=Vector{Vector{Vector{UInt16}}}(undef, 2*length(ref[:bus_arcs][i])+2)
+        coe[k+1]=zeros(complex(Float64), 2*length(ref[:bus_arcs][i])+2)
+        supp[k+1]=Vector{Vector{Vector{UInt16}}}(undef, 2*length(ref[:bus_arcs][i])+2)
         supp[k][1]=[UInt16[], UInt16[]]
         supp[k][2]=[UInt16[r], UInt16[r]]
-        coe[k][1]=fl_sum(load["pd"] for load in bus_loads)+fl_sum(load["qd"] for load in bus_loads)*im
-        coe[k][2]=fl_sum(shunt["gs"] for shunt in bus_shunts)+fl_sum(shunt["bs"] for shunt in bus_shunts)*im
+        supp[k+1][1]=[UInt16[], UInt16[]]
+        supp[k+1][2]=[UInt16[r], UInt16[r]]
+        coe[k][1]=fl_sum(load["pd"] for load in bus_loads)
+        coe[k][2]=fl_sum(shunt["gs"] for shunt in bus_shunts)
+        coe[k+1][1]=fl_sum(load["qd"] for load in bus_loads)
+        coe[k+1][2]=fl_sum(shunt["bs"] for shunt in bus_shunts)
         j=1
         for flow in ref[:bus_arcs][i]
             branch=ref[:branch][flow[1]]
@@ -901,43 +899,44 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
             b_to = branch["b_to"]
             tm = branch["tap"]
             a1=(g+g_fr)/tm^2
-            b1=(-g*tr+b*ti)/(2tm^2)+(b*tr+g*ti)*im/(2tm^2)
-            c1=(-g*tr+b*ti)/(2tm^2)-(b*tr+g*ti)*im/(2tm^2)
-            a2=-(b+b_fr)/tm^2
-            b2=(b*tr+g*ti)/(2tm^2)+(g*tr-b*ti)*im/(2tm^2)
-            c2=(b*tr+g*ti)/(2tm^2)-(g*tr-b*ti)*im/(2tm^2)
-            d1=g+g_to
-            e1=-(g*tr+b*ti)/(2tm^2)+(-b*tr+g*ti)*im/(2tm^2)
-            f1=-(g*tr+b*ti)/(2tm^2)+(b*tr-g*ti)*im/(2tm^2)
-            d2=-(b+b_to)
-            e2=(b*tr-g*ti)/(2tm^2)-(g*tr+b*ti)*im/(2tm^2)
-            f2=(b*tr-g*ti)/(2tm^2)+(g*tr+b*ti)*im/(2tm^2)
-            supp[k][3+2*(j-1)]=[UInt16[vr], UInt16[vt]]
-            supp[k][4+2*(j-1)]=[UInt16[vt], UInt16[vr]]
+            b1=-(b+b_fr)/tm^2
+            c1=(-g*tr+b*ti)/tm^2
+            d1=(b*tr+g*ti)/tm^2
+            a2=g+g_to
+            b2=-(b+b_to)
+            c2=-(g*tr+b*ti)/tm^2
+            d2=-(-b*tr+g*ti)/tm^2
+
+            supp[k][j+2:j+3]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
+            supp[k+1][j+2:j+3]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
             if vr==r
-                coe[k][2]=a1+a2*im
-                coe[k][3+2*(j-1)]=b1+b2*im
-                coe[k][4+2*(j-1)]=c1+c2*im
+                coe[k][2]=a1
+                coe[k][j+2:j+3]=[(c1+d1*im)/2, (c1-d1*im)/2]
+                coe[k+1][2]=b1
+                coe[k+1][j+2:j+3]=[(-c1*im+d1)/2, (c1*im+d1)/2]
             else
-                coe[k][2]=d1+d2*im
-                coe[k][3+2*(j-1)]=e1+e2*im
-                coe[k][4+2*(j-1)]=f1+f2*im
+                coe[k][2]=a2
+                coe[k][j+2:j+3]=[(c2+d2*im)/2, (c2-d2*im)/2]
+                coe[k+1][2]=b2
+                coe[k+1][j+2:j+3]=[(-c2*im+d2)/2, (c2*im+d2)/2]
             end
-            j+=1
+            j+=2
         end
         if !isempty(ref[:bus_gens][i])
-            push!(genlabel, k)
             for gen_id in ref[:bus_gens][i]
                 i=bfind(gens, ng, gen_id)
-                push!(supp[k], [UInt16[i+nbus], UInt16[]])
-                push!(coe[k], -1)
+                push!(supp[k], [UInt16[i+nbus], UInt16[]], [UInt16[], UInt16[i+nbus]])
+                push!(coe[k], -0.5, -0.5)
+                push!(supp[k+1], [UInt16[i+nbus], UInt16[]], [UInt16[], UInt16[i+nbus]])
+                push!(coe[k+1], 0.5*im, -0.5*im)
             end
         end
         if normal==true
             coe[k]=normalize(coe[k])
         end
         supp[k],coe[k]=move_zero!(supp[k],coe[k])
-        k+=1
+        push!(genlabel, k)
+        k+=2
     end
 
     # reference voltage
@@ -959,6 +958,7 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
 
     if length(supp)>m+1
         supp=supp[1:m+1]
+        coe=coe[1:m+1]
     end
     return SparsePolyModel(n,m,numeq,nbus,ng,nb,supp,coe,dg,genlabel)
 end
@@ -1010,14 +1010,14 @@ function clique_opf_four(n,m,nbus,nb,supp;vmc="quadratic",alg="MD",minimize=fals
 end
 
 function clique_opf_four(n,m,nbus,nb,supp,genlabel;vmc="quadratic",alg="MD",minimize=false)
-    G=SimpleGraph(n)
+    G=SimpleGraph(nbus)
     if vmc=="quadratic"
-        t=2*nbus+4*nb
+        t=2*nbus+1
     else
-        t=nbus+4*nb
+        t=nbus+1
     end
-    for i=2:t+1, j = 1:length(supp[i])
-        add_clique!(G, supp[i][j][1])
+    for i=t+1:4:t+4*nb-3
+        add_clique!(G, [supp[i][1][1];supp[i][1][2]])
     end
     if alg=="NC"
         cliques,cql,cliquesize=max_cliques(G)
@@ -1031,8 +1031,10 @@ function clique_opf_four(n,m,nbus,nb,supp,genlabel;vmc="quadratic",alg="MD",mini
             append!(rind, supp[i][j][1])
         end
         rind=sort(unique(rind))
-        push!(cliques, rind)
-        push!(cliquesize, length(rind))
+        if all(clique -> !(rind ⊆ clique), cliques)
+            push!(cliques, rind)
+            push!(cliquesize, length(rind))
+        end
     end
     uc=unique(cliquesize)
     sizes=[sum(cliquesize.== i) for i in uc]
