@@ -55,6 +55,7 @@ function pop_opf(data::Dict{String, Any}; vmc="quadratic",gen_model="two",normal
     nb=length(ref[:branch])
     ng=length(ref[:gen])
     n=2*nbus+2*ng
+    genlabel=Int[]
     if vmc=="quadratic"&&gen_model=="two"
         m=4*nbus+4*nb+2*ng+length(ref[:ref_buses])
     elseif vmc=="quartic"&&gen_model=="two"
@@ -405,7 +406,7 @@ function pop_opf(data::Dict{String, Any}; vmc="quadratic",gen_model="two",normal
         dg[k-1]=1
         k+=1
     end
-    return SparsePolyModel(n,m,numeq,nbus,ng,nb,supp,coe,dg)
+    return SparsePolyModel(n,m,numeq,nbus,ng,nb,supp,coe,dg,genlabel)
 end
 
 function pop_opf_two(data::Dict{String, Any}; normal=true)
@@ -681,7 +682,7 @@ function pop_opf_two(data::Dict{String, Any}; normal=true)
     return SparsePolyModel(n,m,numeq,nbus,ng,nb,supp,coe,dg)
 end
 
-function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",normal=true)
+function pop_opf_com(data::Dict{String, Any}; gen_model="two",normal=true)
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -689,16 +690,12 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
     ng=length(ref[:gen])
     n=nbus+ng
     genlabel=Int[]
-    if vmc=="quadratic"&&gen_model=="two"
-        m=4*nbus+4*nb+2*ng+length(ref[:ref_buses])
-    elseif vmc=="quartic"&&gen_model=="two"
-        m=3*nbus+4*nb+2*ng+length(ref[:ref_buses])
-    elseif vmc=="quadratic"&&gen_model=="one"
-        m=4*nbus+4*nb+4*ng+length(ref[:ref_buses])
+    if gen_model=="two"
+        m=4*nbus+4*nb+2*ng
     else
-        m=3*nbus+4*nb+4*ng+length(ref[:ref_buses])
+        m=4*nbus+4*nb+4*ng
     end
-    numeq=2*nbus+length(ref[:ref_buses])
+    numeq=2*nbus
     dg=2*ones(Int, m)
     supp=Vector{Vector{Vector{Vector{UInt16}}}}(undef, m+1)
     coe=Vector{Vector{complex(Float64)}}(undef, m+1)
@@ -723,33 +720,19 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
     bus=collect(keys(ref[:bus]))
     sort!(bus)
     # voltage magnitude constraints
-    if vmc=="quadratic"
-        for i=1:nbus
-            supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]]]
-            coe[k]=[-ref[:bus][bus[i]]["vmin"]^2;1]
-            if normal==true
-                coe[k]=normalize(coe[k])
-            end
-            k+=1
-            supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]]]
-            coe[k]=[ref[:bus][bus[i]]["vmax"]^2;-1]
-            if normal==true
-                coe[k]=normalize(coe[k])
-            end
-            k+=1
+    for i=1:nbus
+        supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]]]
+        coe[k]=[-ref[:bus][bus[i]]["vmin"]^2;1]
+        if normal==true
+            coe[k]=normalize(coe[k])
         end
-    else
-        for i=1:nbus
-            supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]], [UInt16[i;i], UInt16[i;i]]]
-            lb=ref[:bus][bus[i]]["vmin"]^2
-            ub=ref[:bus][bus[i]]["vmax"]^2
-            coe[k]=[-lb*ub;lb+ub;-1]
-            if normal==true
-                coe[k]=normalize(coe[k])
-            end
-            dg[k-1]=4
-            k+=1
+        k+=1
+        supp[k]=[[UInt16[], UInt16[]], [UInt16[i], UInt16[i]]]
+        coe[k]=[ref[:bus][bus[i]]["vmax"]^2;-1]
+        if normal==true
+            coe[k]=normalize(coe[k])
         end
+        k+=1
     end
 
     for (i, branch) in ref[:branch]
@@ -771,8 +754,8 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
         b2=-(b+b_to)*tm^2
         c2=g*tr+b*ti
         d2=-b*tr+g*ti
-
-        # angle differences
+    #
+    #     # angle differences
         coe[k]=[tan(branch["angmax"])+im;tan(branch["angmax"])-im]
         if normal==true
             coe[k]=normalize(coe[k])
@@ -785,8 +768,8 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
         end
         supp[k]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
         k+=1
-
-        # thermal limits
+    #
+    #     # thermal limits
         coe[k]=[branch["rate_a"]^2*tm^4;-(a1^2+b1^2);-(a1*c1+b1*d1)+(b1*c1-a1*d1)*im;-(a1*c1+b1*d1)+(a1*d1-b1*c1)*im;-(c1^2+d1^2)]
         if normal==true
             coe[k]=normalize(coe[k])
@@ -809,6 +792,9 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
     zero_pgen=UInt16[]
     for i=1:ng
         gen=ref[:gen][gens[i]]
+        # supp[k]=[[UInt16[], UInt16[]], [UInt16[i+nbus], UInt16[i+nbus]]]
+        # coe[k]=[gen["pmax"]^2+gen["qmax"]^2;-1]
+        # k+=1
         if gen["pmax"]>=1e-6
             if gen_model=="two"
                 coe[k]=[-4*gen["pmin"]*gen["pmax"];2*gen["pmin"]+2*gen["pmax"];2*gen["pmin"]+2*gen["pmax"];-1;-2;-1]
@@ -910,15 +896,15 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
             supp[k][j+2:j+3]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
             supp[k+1][j+2:j+3]=[[UInt16[vr], UInt16[vt]], [UInt16[vt], UInt16[vr]]]
             if vr==r
-                coe[k][2]=a1
+                coe[k][2]+=a1
                 coe[k][j+2:j+3]=[(c1+d1*im)/2, (c1-d1*im)/2]
-                coe[k+1][2]=b1
+                coe[k+1][2]+=b1
                 coe[k+1][j+2:j+3]=[(-c1*im+d1)/2, (c1*im+d1)/2]
             else
-                coe[k][2]=a2
-                coe[k][j+2:j+3]=[(c2+d2*im)/2, (c2-d2*im)/2]
-                coe[k+1][2]=b2
-                coe[k+1][j+2:j+3]=[(-c2*im+d2)/2, (c2*im+d2)/2]
+                coe[k][2]+=a2
+                coe[k][j+2:j+3]=[(c2-d2*im)/2, (c2+d2*im)/2]
+                coe[k+1][2]+=b2
+                coe[k+1][j+2:j+3]=[(c2*im+d2)/2, (-c2*im+d2)/2]
             end
             j+=2
         end
@@ -933,20 +919,22 @@ function pop_opf_com(data::Dict{String, Any}; vmc="quadratic",gen_model="two",no
         end
         if normal==true
             coe[k]=normalize(coe[k])
+            coe[k+1]=normalize(coe[k+1])
         end
         supp[k],coe[k]=move_zero!(supp[k],coe[k])
+        supp[k+1],coe[k+1]=move_zero!(supp[k+1],coe[k+1])
         push!(genlabel, k)
         k+=2
     end
 
     # reference voltage
-    for key in keys(ref[:ref_buses])
-        i=bfind(bus,nbus,key)
-        supp[k]=[[UInt16[i;i], UInt16[]], [UInt16[i], UInt16[i]], [UInt16[], UInt16[i;i]]]
-        coe[k]=[1;-2;1]
-        dg[k-1]=2
-        k+=1
-    end
+    # for key in keys(ref[:ref_buses])
+    #     i=bfind(bus,nbus,key)
+    #     supp[k]=[[UInt16[i;i], UInt16[]], [UInt16[i], UInt16[i]], [UInt16[], UInt16[i;i]]]
+    #     coe[k]=[1;-2;1]
+    #     dg[k-1]=2
+    #     k+=1
+    # end
 
     # zero power generation
     for i in zero_pgen
