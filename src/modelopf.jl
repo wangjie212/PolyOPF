@@ -1587,7 +1587,7 @@ end
 #     return SparsePolyModel(n,m,numeq,nbus,ng,nb,supp,coe,dg),startpoint
 # end
 
-# function clique_opf_two(n,m,nbus,supp;alg="MD",minimize=false)
+# function clique_opf_two(n,m,nbus,supp;alg="MF",minimize=true)
 #     G=SimpleGraph(n)
 #     for i=1:m+1, j = 1:supp[i].n
 #         add_clique!(G,supp[i].rowval[supp[i].colptr[j]:(supp[i].colptr[j+1]-1)])
@@ -1606,14 +1606,9 @@ end
 #     return cliques,cql,cliquesize
 # end
 
-# function clique_opf_four(n,m,nbus,nb,supp;vmc="quadratic",alg="MD",minimize=false)
+# function clique_opf_four(n,m,nbus,nb,supp;alg="MF",minimize=true)
 #     G=SimpleGraph(n)
-#     if vmc=="quadratic"
-#         t=2*nbus+4*nb
-#     else
-#         t=nbus+4*nb
-#     end
-#     for i=2:t+1, j = 1:supp[i].n
+#     for i=2:2*nbus+4*nb+1, j = 1:supp[i].n
 #         add_clique!(G,supp[i].rowval[supp[i].colptr[j]:(supp[i].colptr[j+1]-1)])
 #     end
 #     if alg=="NC"
@@ -1633,7 +1628,7 @@ end
 #     return cliques,cql,cliquesize
 # end
 
-# function clique_opf_four(data,nbus,ng;alg="MD",minimize=false)
+# function clique_opf_four(data,nbus,ng;alg="MF",minimize=true)
 #     ref = PowerModels.build_ref(data)[:nw][0]
 #     bus=collect(keys(ref[:bus]))
 #     sort!(bus)
