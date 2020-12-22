@@ -1,5 +1,6 @@
 using LightGraphs
 using PowerModels
+using SparseArrays
 
 abstract type AbstractSparsePolyModel end
 
@@ -917,12 +918,12 @@ function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, Lin
                 coe[k]=[branch["rate_a"]^2*tm^4;-ab1;-2*ab1;-ab1;-cd1;-cd1;-cd1;-cd1;-2*acbd1;-2*acbd1;-2*acbd1;-2*acbd1;-2*bcad1;2*bcad1;-2*bcad1;2*bcad1]
                 supp[k]=[[], [vr;vr;vr;vr], [vr;vr;vr+nbus;vr+nbus], [vr+nbus;vr+nbus;vr+nbus;vr+nbus], [vt;vt;vr+nbus;vr+nbus], [vr;vr;vt+nbus;vt+nbus],
                 dsrt, dsrt.+nbus, sort([vr;vr;vr;vt]), [vr;vr;sort([vr+nbus;vt+nbus])], [srt;vr+nbus;vr+nbus], sort([vr;vr;vr;vt]).+nbus, [sort([vr;vr;vt]);vr+nbus],
-                [vr;vr;vr;vt+nbus], [vt;vr+nbus;vr+nbus;vr+nbus], [vr;sort([vr+nbus;vt+nbus;vt+nbus])]]
+                [vr;vr;vr;vt+nbus], [vt;vr+nbus;vr+nbus;vr+nbus], [vr;sort([vr+nbus;vr+nbus;vt+nbus])]]
                 supp[k],coe[k]=move_zero!(supp[k],coe[k])
                 coe[k+1]=[branch["rate_a"]^2*tm^4;-ab2;-2*ab2;-ab2;-cd2;-cd2;-cd2;-cd2;-2*acbd2;-2*acbd2;-2*acbd2;-2*acbd2;-2*bcad2;2*bcad2;-2*bcad2;2*bcad2]
                 supp[k+1]=[[], [vt;vt;vt;vt], [vt;vt;vt+nbus;vt+nbus], [vt+nbus;vt+nbus;vt+nbus;vt+nbus], [vr;vr;vt+nbus;vt+nbus], [vt;vt;vr+nbus;vr+nbus],
                 dsrt, dsrt.+nbus, sort([vt;vt;vt;vr]), [vt;vt;sort([vt+nbus;vr+nbus])], [srt;vt+nbus;vt+nbus], sort([vt;vt;vt;vr]).+nbus, [sort([vt;vt;vr]);vt+nbus],
-                [vt;vt;vt;vr+nbus], [vr;vt+nbus;vt+nbus;vt+nbus], [vt;sort([vt+nbus;vr+nbus;vr+nbus])]]
+                [vt;vt;vt;vr+nbus], [vr;vt+nbus;vt+nbus;vt+nbus], [vt;sort([vt+nbus;vt+nbus;vr+nbus])]]
                 supp[k+1],coe[k+1]=move_zero!(supp[k+1],coe[k+1])
                 dg[k-1:k]=[4;4]
                 if normal==true
@@ -972,6 +973,7 @@ function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, Lin
         else
             gen_id=ref[:bus_gens][i][1]
             gen=ref[:gen][gen_id]
+            gc2=gen["cost"][2]
             supp[k1:k1+3]=[[[], [r;r], [r+nbus;r+nbus]] for l=1:4]
             coe[k1]=[gen["pmax"]-ploads, -sgs, -sgs]
             coe[k1+1]=[-gen["pmin"]+ploads, sgs, sgs]
@@ -979,8 +981,8 @@ function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, Lin
             coe[k1+3]=[-gen["qmin"]+qloads, -sbs, -sbs]
             push!(supp[1], [r;r], [r+nbus;r+nbus])
             ngen=length(supp[1])
-            coe[1][1]+=gen["cost"][2]*ploads
-            push!(coe[1], gen["cost"][2]*sgs, gen["cost"][2]*sgs)
+            coe[1][1]+=gc2*ploads
+            push!(coe[1], gc2*sgs, gc2*sgs)
         end
         j=1
         for flow in ref[:bus_arcs][i]
@@ -1021,8 +1023,8 @@ function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, Lin
                     coe[k+1][2:3].+=b1
                     coe[k+1][j+3:j+6]=[d1;c1;-c1;d1]
                 else
-                    coe[1][ngen-1:ngen].+=gen["cost"][2]*a1
-                    push!(coe[1], gen["cost"][2]*c1, -gen["cost"][2]*d1, gen["cost"][2]*d1, gen["cost"][2]*c1)
+                    coe[1][ngen-1:ngen].+=gc2*a1
+                    push!(coe[1], gc2*c1, -gc2*d1, gc2*d1, gc2*c1)
                     coe[k1][2:3].-=a1
                     push!(coe[k1], -c1, d1, -d1, -c1)
                     coe[k1+1][2:3].+=a1
@@ -1039,8 +1041,8 @@ function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, Lin
                     coe[k+1][2:3].+=b2
                     coe[k+1][j+3:j+6]=[d2;-c2;c2;d2]
                 else
-                    coe[1][ngen-1:ngen].+=gen["cost"][2]*a2
-                    push!(coe[1], gen["cost"][2]*c2, gen["cost"][2]*d2, -gen["cost"][2]*d2, gen["cost"][2]*c2)
+                    coe[1][ngen-1:ngen].+=gc2*a2
+                    push!(coe[1], gc2*c2, gc2*d2, -gc2*d2, gc2*c2)
                     coe[k1][2:3].-=a2
                     push!(coe[k1], -c2, -d2, d2, -c2)
                     coe[k1+1][2:3].+=a2
@@ -1077,7 +1079,7 @@ function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, Lin
                 lsupp=length(supp[1])
                 gc1=gen["cost"][1]
                 coe[1][1]+=gc1*ploads^2
-                for l=ngen:lsupp
+                for l=ngen-1:lsupp
                     push!(supp[1], sadd(supp[1][l], supp[1][l]))
                     push!(coe[1], gc1*coe[1][l]^2/gc2^2)
                     for p=l+1:lsupp
