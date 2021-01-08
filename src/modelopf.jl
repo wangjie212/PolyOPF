@@ -49,7 +49,8 @@ end
 
 # Voltage-power real formulization
 function pop_opf(case::String; normal=true)
-    data = parse_file("pglib_opf_" * case * ".m")
+    path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
+    data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -314,7 +315,8 @@ end
 
 # Voltage-power real QCQP formulization
 function pop_opf_two(case::String; normal=true)
-    data = parse_file("pglib_opf_" * case * ".m")
+    path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
+    data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -582,7 +584,8 @@ end
 
 # Voltage only complex formulization
 function pop_opf_com(case::String; normal=true, AngleCons=false, LineLimit=false)
-    data = parse_file("./pglib/pglib_opf_" * case * ".m")
+    path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
+    data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -841,7 +844,8 @@ end
 
 # Voltage only real formulization
 function pop_opf_real(case::String; normal=true, AngleCons=false, LineLimit=false)
-    data = parse_file("./pglib/pglib_opf_" * case * ".m")
+    path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
+    data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -1107,10 +1111,10 @@ function pop_opf_real(case::String; normal=true, AngleCons=false, LineLimit=fals
     return SparsePolyModel(n,m,numeq,nbus,ng,nb,supp,coe,dg),startpoint
 end
 
-function sadd(a, b)
-    c=[a;b]
-    return sort!(c)
-end
+# function sadd(a, b)
+#     c=[a;b]
+#     return sort!(c)
+# end
 
 function resort(supp, coe; field="real")
     nsupp=copy(supp)
