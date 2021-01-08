@@ -48,7 +48,8 @@ function move_zero!(col,row,nz,coe)
 end
 
 # Voltage-power real formulization
-function pop_opf(data::Dict{String, Any}; normal=true)
+function pop_opf(case::String; normal=true)
+    data = parse_file("pglib_opf_" * case * ".m")
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -312,7 +313,8 @@ function pop_opf(data::Dict{String, Any}; normal=true)
 end
 
 # Voltage-power real QCQP formulization
-function pop_opf_two(data::Dict{String, Any}; normal=true)
+function pop_opf_two(case::String; normal=true)
+    data = parse_file("pglib_opf_" * case * ".m")
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -579,7 +581,8 @@ function pop_opf_two(data::Dict{String, Any}; normal=true)
 end
 
 # Voltage only complex formulization
-function pop_opf_com(data::Dict{String, Any}; normal=true, AngleCons=false, LineLimit=false)
+function pop_opf_com(case::String; normal=true, AngleCons=false, LineLimit=false)
+    data = parse_file("./pglib/pglib_opf_" * case * ".m")
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
@@ -837,7 +840,8 @@ function pop_opf_com(data::Dict{String, Any}; normal=true, AngleCons=false, Line
 end
 
 # Voltage only real formulization
-function pop_opf_real(data::Dict{String, Any}; normal=true, AngleCons=false, LineLimit=false)
+function pop_opf_real(case::String; normal=true, AngleCons=false, LineLimit=false)
+    data = parse_file("./pglib/pglib_opf_" * case * ".m")
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
     nbus=length(ref[:bus])
