@@ -49,6 +49,7 @@ end
 
 # Voltage-power real formulization
 function pop_opf(case::String; normal=true)
+    silence()
     path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
     data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
@@ -315,6 +316,7 @@ end
 
 # Voltage-power real QCQP formulization
 function pop_opf_two(case::String; normal=true)
+    silence()
     path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
     data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
@@ -584,6 +586,7 @@ end
 
 # Voltage only complex formulization
 function pop_opf_com(case::String; normal=true, AngleCons=false, LineLimit=false)
+    silence()
     path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
     data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
@@ -844,6 +847,7 @@ end
 
 # Voltage only real formulization
 function pop_opf_real(case::String; normal=true, AngleCons=false, LineLimit=false)
+    silence()
     path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
     data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
