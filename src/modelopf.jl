@@ -1137,6 +1137,30 @@ function resort(supp, coe; field="real")
     return nsupp,ncoe
 end
 
+function bfind(A, l, a)
+    if l==0
+        return 0
+    end
+    low=1
+    high=l
+    while low<=high
+        mid=Int(ceil(1/2*(low+high)))
+        if ndims(A)==2
+            temp=A[:, mid]
+        else
+            temp=A[mid]
+        end
+        if temp==a
+           return mid
+        elseif temp<a
+           low=mid+1
+        else
+           high=mid-1
+        end
+    end
+    return 0
+end
+
 # function pop_opf_com(data::Dict{String, Any}; normal=true, AngleCons=false, LineLimit=false)
 #     PowerModels.standardize_cost_terms!(data, order=2)
 #     ref = PowerModels.build_ref(data)[:nw][0]
