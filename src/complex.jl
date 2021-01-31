@@ -335,7 +335,7 @@ function assign_constraint(m,supp::Vector{Vector{Vector{Vector{UInt16}}}},clique
     return J,ncc
 end
 
-function get_basis(var,d)
+function get_basis(var::Vector{UInt16},d)
     n=length(var)
     lb=binomial(n+d,d)
     basis=Vector{Vector{UInt16}}(undef, lb)
