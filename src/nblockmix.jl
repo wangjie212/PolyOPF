@@ -25,7 +25,7 @@ mutable struct mcpop_data
 end
 
 """
-    opt,sol,data = cs_tssos_first(pop, x, d; nb=0, numeq=0, foc=100, CS="MF", minimize=true,
+    opt,sol,data = cs_tssos_first(pop, x, d; nb=0, numeq=0, foc=100, CS="MF", minimize=false,
     assign="first", TS="block", solver="Mosek", QUIET=false, solve=true, solution=false,
     MomentOne=true, tol=1e-4)
 
@@ -39,9 +39,11 @@ relaxation order `d`.
 - `nb`: the number of binary variables in `x`.
 - `numeq`: the number of equality constraints.
 """
-function cs_tssos_first(pop, x, d; nb=0, numeq=0, foc=100, CS="MF", minimize=true, assign="first",
-    TS="block", solver="Mosek", QUIET=false, solve=true, solution=false, MomentOne=true, tol=1e-4)
+function cs_tssos_first(pop, x, d; nb=0, numeq=0, foc=100, CS="MF", minimize=false, assign="first", TS="block",
+    solver="Mosek", tune=false, QUIET=false, solve=true, solution=false, MomentOne=true, tol=1e-4)
     n=length(x)
+    println("***************************TSSOS***************************")
+    println("TSSOS is launching...")
     m=length(pop)-1
     coe=Vector{Vector{Float64}}(undef, m+1)
     supp=Vector{Vector{Vector{UInt16}}}(undef, m+1)
@@ -61,11 +63,26 @@ function cs_tssos_first(pop, x, d; nb=0, numeq=0, foc=100, CS="MF", minimize=tru
         end
     end
     dg=maxdegree.(pop[2:m+1])
+    time=@elapsed begin
     cliques,cql,cliquesize=clique_decomp(n,m,dg,supp,order=d,alg=CS,minimize=minimize)
+    end
+    if CS!=false&&QUIET==false
+        mc=maximum(cliquesize)
+        println("Obtained the variable cliques in $time seconds. The maximal size of cliques is $mc.")
+    end
     J,ncc=assign_constraint(m,supp,cliques,cql,cliquesize,assign=assign)
     rlorder=init_order(dg,J,cliquesize,cql,foc=foc,order=d)
+    if TS!=false&&QUIET==false
+        println("Starting to compute the block structure...")
+    end
+    time=@elapsed begin
     blocks,cl,blocksize,sb,numb,basis,status=get_cblocks_mix!(dg,J,rlorder,m,supp,cliques,cql,cliquesize,nb=nb,TS=TS)
-    opt,ksupp,moment=blockcpop_mix(n,m,supp,coe,basis,cliques,cql,cliquesize,J,ncc,blocks,cl,blocksize,numeq=numeq,nb=nb,QUIET=QUIET,TS=TS,solver=solver,solve=solve,solution=solution,MomentOne=MomentOne)
+    end
+    if TS!=false&&QUIET==false
+        mb=maximum(maximum.(sb))
+        println("Obtained the block structure in $time seconds. The maximal size of blocks is $mb.")
+    end
+    opt,ksupp,moment=blockcpop_mix(n,m,supp,coe,basis,cliques,cql,cliquesize,J,ncc,blocks,cl,blocksize,numeq=numeq,nb=nb,QUIET=QUIET,TS=TS,solver=solver,tune=tune,solve=solve,solution=solution,MomentOne=MomentOne)
     if solution==true
         sol,flag=approx_sol(opt, moment, n, cliques, cql, cliquesize, supp, coe, numeq=numeq, tol=tol)
     else
@@ -78,7 +95,7 @@ end
 
 """
     opt,sol,data = cs_tssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe::Vector{Vector{Float64}},
-    n, d; numeq=0, nb=0, foc=100, CS="MF", minimize=true, assign="first", TS="block", QUIET=false,
+    n, d; numeq=0, nb=0, foc=100, CS="MF", minimize=false, assign="first", TS="block", QUIET=false,
     solver="Mosek", solve=true, solution=false, MomentOne=true, tol=1e-4)
 
 Compute the first step of the CS-TSSOS hierarchy for constrained polynomial optimization with
@@ -93,15 +110,32 @@ corresponding to the supports and coeffients of `pop` respectively.
 - `numeq`: the number of equality constraints.
 """
 function cs_tssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe::Vector{Vector{Float64}}, n, d;
-    numeq=0, nb=0, foc=100, CS="MF", minimize=true, assign="first", TS="block", QUIET=false,
-    solver="Mosek", solve=true, solution=false, MomentOne=true, tol=1e-4)
+    numeq=0, nb=0, foc=100, CS="MF", minimize=false, assign="first", TS="block", QUIET=false,
+    solver="Mosek", tune=false, solve=true, solution=false, MomentOne=true, tol=1e-4)
+    println("************************TSSOS************************")
+    println("TSSOS is launching...")
     m=length(supp)-1
     dg=[maximum(length.(supp[i])) for i=2:m+1]
+    time=@elapsed begin
     cliques,cql,cliquesize=clique_decomp(n,m,dg,supp,order=d,alg=CS,minimize=minimize)
+    end
+    if CS!=false&&QUIET==false
+        mc=maximum(cliquesize)
+        println("Obtained the variable cliques in $time seconds. The maximal size of cliques is $mc.")
+    end
     J,ncc=assign_constraint(m,supp,cliques,cql,cliquesize,assign=assign)
     rlorder=init_order(dg,J,cliquesize,cql,foc=foc,order=d)
+    if TS!=false&&QUIET==false
+        println("Starting to compute the block structure...")
+    end
+    time=@elapsed begin
     blocks,cl,blocksize,sb,numb,basis,status=get_cblocks_mix!(dg,J,rlorder,m,supp,cliques,cql,cliquesize,nb=nb,TS=TS)
-    opt,ksupp,moment=blockcpop_mix(n,m,supp,coe,basis,cliques,cql,cliquesize,J,ncc,blocks,cl,blocksize,numeq=numeq,nb=nb,QUIET=QUIET,TS=TS,solver=solver,solve=solve,solution=solution,MomentOne=MomentOne)
+    end
+    if TS!=false&&QUIET==false
+        mb=maximum(maximum.(sb))
+        println("Obtained the block structure in $time seconds. The maximal size of blocks is $mb.")
+    end
+    opt,ksupp,moment=blockcpop_mix(n,m,supp,coe,basis,cliques,cql,cliquesize,J,ncc,blocks,cl,blocksize,numeq=numeq,nb=nb,QUIET=QUIET,TS=TS,solver=solver,tune=tune,solve=solve,solution=solution,MomentOne=MomentOne)
     if solution==true
         sol,flag=approx_sol(opt, moment, n, cliques, cql, cliquesize, supp, coe, numeq=numeq, tol=tol)
     else
@@ -142,7 +176,16 @@ function cs_tssos_higher!(data; TS="block", QUIET=false, solve=true, solution=fa
     numb=data.numb
     solver=data.solver
     tol=data.tol
+    if TS!=false&&QUIET==false
+        println("Starting to compute the block structure...")
+    end
+    time=@elapsed begin
     blocks,cl,blocksize,sb,numb,basis,status=get_cblocks_mix!(dg,J,rlorder,m,supp,cliques,cql,cliquesize,tsupp=ksupp,basis=basis,blocks=blocks,cl=cl,blocksize=blocksize,sb=sb,numb=numb,nb=nb,TS=TS)
+    end
+    if TS!=false&&QUIET==false
+        mb=maximum(maximum.(sb))
+        println("Obtained the block structure in $time seconds. The maximal size of blocks is $mb.")
+    end
     opt=nothing
     sol=nothing
     if status==1
@@ -163,8 +206,8 @@ function cs_tssos_higher!(data; TS="block", QUIET=false, solve=true, solution=fa
 end
 
 function blockcpop_mix(n, m, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, cliques, cql, cliquesize,
-    J, ncc, blocks, cl, blocksize; numeq=0, nb=0, QUIET=false, TS="block", solver="Mosek", solve=true,
-    solution=false, MomentOne=false)
+    J, ncc, blocks, cl, blocksize; numeq=0, nb=0, QUIET=false, TS="block", solver="Mosek", tune=false,
+    solve=true, solution=false, MomentOne=false)
     tsupp=Vector{UInt16}[]
     for i=1:cql, j=1:cl[i][1], k=1:blocksize[i][1][j], r=k:blocksize[i][1][j]
         @inbounds bi=sadd(basis[i][1][blocks[i][1][j][k]], basis[i][1][blocks[i][1][j][r]], nb=nb)
@@ -201,17 +244,35 @@ function blockcpop_mix(n, m, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, c
         ksupp=tsupp
     end
     objv=nothing
+    moment=nothing
     if solve==true
         ltsupp=length(tsupp)
+        if QUIET==false
+            println("Assembling the SDP...")
+        end
         if solver=="Mosek"
-            model=Model(optimizer_with_attributes(Mosek.Optimizer))
+            model = Model(optimizer_with_attributes(Mosek.Optimizer))
+            if tune==true
+                set_optimizer_attributes(model,
+                "MSK_DPAR_INTPNT_CO_TOL_MU_RED" => 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_INFEAS" => 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_REL_GAP" => 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_DFEAS" => 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_PFEAS" => 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_NEAR_REL" => 1e6,
+                "MSK_IPAR_BI_IGNORE_NUM_ERROR" => 1,
+                "MSK_DPAR_BASIS_TOL_X" => 1e-3,
+                "MSK_DPAR_BASIS_TOL_S" => 1e-3,
+                "MSK_DPAR_BASIS_REL_TOL_S" => 1e-5)
+            end
         elseif solver=="SDPT3"
-            model=Model(optimizer_with_attributes(SDPT3.Optimizer))
+            model = Model(optimizer_with_attributes(SDPT3.Optimizer))
         else
             @error "The solver is currently not supported!"
             return nothing,nothing,nothing
         end
         set_optimizer_attribute(model, MOI.Silent(), QUIET)
+        time=@elapsed begin
         cons=[AffExpr(0) for i=1:ltsupp]
         for i=1:cql
             if (MomentOne==true||solution==true)&&TS!=false
@@ -321,7 +382,17 @@ function blockcpop_mix(n, m, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, c
             @constraint(model, cons[1]+lower==bc[1])
         end
         @objective(model, Max, lower)
+        end
+        if QUIET==false
+            println("SDP assembling time: $time seconds.")
+            println("Solving the SDP...")
+        end
+        time=@elapsed begin
         optimize!(model)
+        end
+        if QUIET==false
+            println("SDP solving time: $time seconds.")
+        end
         status=termination_status(model)
         objv = objective_value(model)
         if status!=MOI.OPTIMAL
@@ -333,8 +404,6 @@ function blockcpop_mix(n, m, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, c
         if solution==true
             measure=-dual.(con)
             moment=get_moment(measure,tsupp,cliques,cql,cliquesize,nb=nb)
-        else
-            moment=nothing
         end
     end
     return objv,ksupp,moment
