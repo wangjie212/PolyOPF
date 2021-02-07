@@ -122,7 +122,7 @@ function blockcpop_mix(n, m, supp::Vector{Vector{Vector{Vector{UInt16}}}}, coe, 
             println("Assembling the SDP...")
         end
         model=Model(optimizer_with_attributes(Mosek.Optimizer))
-        set_optimizer_attribute(model, MOI.Silent(), QUIET)
+        set_optimizer_attribute(model, MOI.Silent(), true)
         time=@elapsed begin
         rcons=[AffExpr(0) for i=1:ltsupp]
         icons=[AffExpr(0) for i=1:ltsupp]

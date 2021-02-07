@@ -271,7 +271,7 @@ function blockcpop_mix(n, m, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, c
             @error "The solver is currently not supported!"
             return nothing,nothing,nothing
         end
-        set_optimizer_attribute(model, MOI.Silent(), QUIET)
+        set_optimizer_attribute(model, MOI.Silent(), true)
         time=@elapsed begin
         cons=[AffExpr(0) for i=1:ltsupp]
         for i=1:cql
