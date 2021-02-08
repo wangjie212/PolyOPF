@@ -585,7 +585,7 @@ end
 # end
 
 # Voltage only complex formulization
-function pop_opf_com(data; normal=true, AngleCons=false, LineLimit=false)
+function pop_opf_com(case::String; normal=true, AngleCons=false, LineLimit=false)
     silence()
     path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
     data = parse_file(path)
