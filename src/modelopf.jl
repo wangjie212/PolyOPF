@@ -587,7 +587,7 @@ end
 # Voltage only complex formulization
 function pop_opf_com(case::String; normal=true, AngleCons=false, LineLimit=false)
     silence()
-    path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_" * case * ".m")
+    path = joinpath(dirname(dirname(pathof(PolyOPF))), "pglib", "pglib_opf_case" * case * ".m")
     data = parse_file(path)
     PowerModels.standardize_cost_terms!(data, order=2)
     ref = PowerModels.build_ref(data)[:nw][0]
