@@ -252,6 +252,7 @@ function blockcpop_mix(n, m, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, c
         end
         if solver=="Mosek"
             model = Model(optimizer_with_attributes(Mosek.Optimizer))
+            set_optimizer_attributes(model, "MSK_IPAR_NUM_THREADS" => 16)
             if tune==true
                 set_optimizer_attributes(model,
                 "MSK_DPAR_INTPNT_CO_TOL_MU_RED" => 1e-7,
